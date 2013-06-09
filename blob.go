@@ -30,3 +30,13 @@ func (v *Blob) Contents() []byte {
 	return C.GoBytes(buffer, size)
 }
 
+func NewBlobFromBuffer(repo *Repository, data []byte) (*Oid, error) {
+	var oid *Oid = new(Oid)
+	ret := C.git_blob_create_frombuffer(oid.toC(), repo.ptr, unsafe.Pointer(&data[0]), C.size_t(len(data)))
+	if ret < 0 {
+		return nil, LastError();
+	}
+
+	return oid, nil;
+}
+
