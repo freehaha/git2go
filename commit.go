@@ -9,48 +9,59 @@ extern int _go_git_treewalk(git_tree *tree, git_treewalk_mode mode, void *ptr);
 import "C"
 
 import (
-	"runtime"
 	"unsafe"
 	"time"
 )
 
 // Commit
 type Commit struct {
-	ptr *C.git_commit
+	gitObject
 }
 
-func (c *Commit) Id() *Oid {
-	return newOidFromC(C.git_commit_id(c.ptr))
-}
-
-func (c *Commit) Message() string {
+func (c Commit) Message() string {
 	return C.GoString(C.git_commit_message(c.ptr))
 }
 
-func (c *Commit) Tree() (*Tree, error) {
-	tree := new(Tree)
+func (c Commit) Tree() (*Tree, error) {
+	var ptr *C.git_object
 
-	err := C.git_commit_tree(&tree.ptr, c.ptr)
+	err := C.git_commit_tree(&ptr, c.ptr)
 	if err < 0 {
 		return nil, LastError()
 	}
 
-	runtime.SetFinalizer(tree, (*Tree).Free)
-	return tree, nil
+	return allocObject(ptr).(*Tree), nil
 }
 
-func (c *Commit) TreeId() *Oid {
+func (c Commit) TreeId() *Oid {
 	return newOidFromC(C.git_commit_tree_id(c.ptr))
 }
 
-func (c *Commit) Author() *Signature {
+func (c Commit) Author() *Signature {
 	ptr := C.git_commit_author(c.ptr)
 	return newSignatureFromC(ptr)
 }
 
-func (c *Commit) Committer() *Signature {
+func (c Commit) Committer() *Signature {
 	ptr := C.git_commit_committer(c.ptr)
 	return newSignatureFromC(ptr)
+}
+
+func (c *Commit) Parent(n uint) *Commit {
+	par := &Commit{}
+	ret := C.git_commit_parent(&par.ptr, c.ptr, C.uint(n))
+	if ret != 0 {
+		return nil
+	}
+	return par
+}
+
+func (c *Commit) ParentId(n uint) *Oid {
+	return newOidFromC(C.git_commit_parent_id(c.ptr, C.uint(n)))
+}
+
+func (c *Commit) ParentCount() uint {
+	return uint(C.git_commit_parentcount(c.ptr))
 }
 
 // Signature
